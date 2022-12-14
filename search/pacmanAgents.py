@@ -12,41 +12,53 @@
 # Pieter Abbeel (pabbeel@cs.berkeley.edu).
 
 
-from pacman import Directions
+from pacman import Directions, GameState
 from game import Agent
 import random
 import game
 import util
 
-class LeftTurnAgent(game.Agent):
-    "An agent that turns left at every opportunity"
-
-    def getAction(self, state):
-        legal = state.getLegalPacmanActions()
-        current = state.getPacmanState().configuration.direction
-        if current == Directions.STOP: current = Directions.NORTH
-        left = Directions.LEFT[current]
-        if left in legal: return left
-        if current in legal: return current
-        if Directions.RIGHT[current] in legal: return Directions.RIGHT[current]
-        if Directions.LEFT[left] in legal: return Directions.LEFT[left]
-        return Directions.STOP
-
-class GreedyAgent(Agent):
-    def __init__(self, evalFn="scoreEvaluation"):
-        self.evaluationFunction = util.lookup(evalFn, globals())
-        assert self.evaluationFunction != None
-
-    def getAction(self, state):
-        # Generate candidate actions
-        legal = state.getLegalPacmanActions()
-        if Directions.STOP in legal: legal.remove(Directions.STOP)
-
-        successors = [(state.generateSuccessor(0, action), action) for action in legal]
-        scored = [(self.evaluationFunction(state), action) for state, action in successors]
-        bestScore = max(scored)[0]
-        bestActions = [pair[1] for pair in scored if pair[0] == bestScore]
-        return random.choice(bestActions)
+MAX_DEPTH = 7
 
 def scoreEvaluation(state):
     return state.getScore()
+
+class MinimaxAlphaBetaAgent(Agent):
+    def minimax(self, state, agent, alpha, beta, depth):
+        if state.isLose() or state.isWin() or depth == MAX_DEPTH:
+            return [scoreEvaluation(state)]
+        if agent == 0:
+            bestValue = -float("inf")
+            actions = state.getLegalActions(agent)
+            if Directions.STOP in actions:
+                actions.remove(Directions.STOP)
+            for action in actions:
+                nextState = state.generateSuccessor(agent, action)
+                value = self.minimax(nextState, agent + 1, alpha, beta, depth + 1)[0]
+                if value > bestValue:
+                    bestValue = value
+                    bestAction = action
+                alpha = max(alpha, bestValue)
+                if beta <= alpha:
+                    break
+            return [bestValue, bestAction]
+        else:
+            bestValue = float("inf")
+            next_agent = agent + 1
+            if agent == state.getNumAgents() - 1:
+                next_agent = 0
+            actions = state.getLegalActions(agent)
+
+            for action in actions:
+                nextState = state.generateSuccessor(agent, action)
+                value = self.minimax(nextState, next_agent, alpha, beta, depth + 1)[0]
+                if value < bestValue:
+                    bestValue = value
+                    bestAction = action
+                beta = min(beta, bestValue)
+                if beta <= alpha:
+                    break
+            return [bestValue, bestAction]
+
+    def getAction(self, gameState: GameState):
+        return self.minimax(gameState, self.index, -float("inf"), float("inf"), 0)[1]
