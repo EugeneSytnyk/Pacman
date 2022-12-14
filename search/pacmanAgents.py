@@ -1,22 +1,5 @@
-# pacmanAgents.py
-# ---------------
-# Licensing Information:  You are free to use or extend these projects for
-# educational purposes provided that (1) you do not distribute or publish
-# solutions, (2) you retain this notice, and (3) you provide clear
-# attribution to UC Berkeley, including a link to http://ai.berkeley.edu.
-# 
-# Attribution Information: The Pacman AI projects were developed at UC Berkeley.
-# The core projects and autograders were primarily created by John DeNero
-# (denero@cs.berkeley.edu) and Dan Klein (klein@cs.berkeley.edu).
-# Student side autograding was added by Brad Miller, Nick Hay, and
-# Pieter Abbeel (pabbeel@cs.berkeley.edu).
-
-
 from pacman import Directions, GameState
 from game import Agent
-import random
-import game
-import util
 
 MAX_DEPTH = 7
 
@@ -62,3 +45,35 @@ class MinimaxAlphaBetaAgent(Agent):
 
     def getAction(self, gameState: GameState):
         return self.minimax(gameState, self.index, -float("inf"), float("inf"), 0)[1]
+
+class ExpectimaxAgent(Agent):
+    def expectimax(self, state, agent, depth):
+        if state.isLose() or state.isWin() or depth == MAX_DEPTH:
+            return [scoreEvaluation(state)]
+        if agent == 0:
+            bestValue = -float("inf")
+            actions = state.getLegalActions(agent)
+            if Directions.STOP in actions:
+                actions.remove(Directions.STOP)
+            for action in actions:
+                nextState = state.generateSuccessor(agent, action)
+                value = self.expectimax(nextState, agent + 1, depth + 1)[0]
+                if value > bestValue:
+                    bestValue = value
+                    bestAction = action
+            return [bestValue, bestAction]
+        else:
+            bestValue = 0
+            next_agent = agent + 1
+            if agent == state.getNumAgents() - 1:
+                next_agent = 0
+            actions = state.getLegalActions(agent)
+
+            for action in actions:
+                nextState = state.generateSuccessor(agent, action)
+                bestValue += self.expectimax(nextState, next_agent, depth + 1)[0]
+            bestValue = bestValue / len(actions)
+            return [bestValue]
+
+    def getAction(self, gameState: GameState):
+        return self.expectimax(gameState, self.index, 0)[1]
